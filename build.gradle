@@ -1,156 +1,96 @@
-import java.text.SimpleDateFormat
-
 plugins {
-    id 'fabric-loom' version '0.2.7-SNAPSHOT'
-    id 'maven-publish'
-    id 'maven'
-    id 'signing'
-    id 'com.jfrog.bintray' version '1.8.4'
-    id 'com.matthewprenger.cursegradle' version '1.4.0'
-    id 'java-library'
+	id 'fabric-loom' version '1.8-SNAPSHOT'
+	id 'maven-publish'
+}
+
+version = project.mod_version
+group = "me.shedaniel.cloth"
+
+base {
+	archivesName = "config-2"
 }
 
 repositories {
-    maven {
-        name = 'Fabric'
-        url = 'https://maven.fabricmc.net/'
-    }
-    jcenter()
-    maven { url "https://jitpack.io" }
-}
-
-sourceCompatibility = targetCompatibility = 1.8
-
-group = "me.shedaniel.cloth"
-archivesBaseName = "config-2"
-version = project.mod_version
-
-minecraft {
-}
-
-processResources {
-    filesMatching('fabric.mod.json') {
-        expand 'version': project.version
-    }
-    inputs.property "version", project.version
+	// Add repositories to retrieve artifacts from in here.
+	// You should only use this when depending on other mods because
+	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
+	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
+	// for more information about repositories.
+	// Terraformers Maven, for Mod Menu
+	//Cassian's Maven, for Fabric Item API
+	maven {
+		url "https://maven.cassian.cc"
+	}
+	maven {
+		name = "Terraformers"
+		url = "https://maven.terraformersmc.com/"
+		content {
+			includeGroup "io.github.prospector"
+		}
+	}
+	maven {
+		name = "shedaniel"
+		url = "https://maven.shedaniel.me"
+	}
 }
 
 dependencies {
-    compileOnly 'org.jetbrains:annotations:18.0.0'
-
-    minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-
-    modApi "net.fabricmc:fabric-loader:${project.loader_version}"
-    modApi "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-    modApi "me.shedaniel.cloth:basic-math:0.4.1"
-    include "me.shedaniel.cloth:basic-math:0.4.1"
-
-    modImplementation "io.github.prospector:modmenu:${modmenu_version}"
-
-//    modRuntime "com.lettuce.fudge:notenoughcrashes:$nec_version"
+	// To change the versions see the gradle.properties file. Unused libraries should be commented out.
+	// Minecraft
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	// Yarn mappings
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	// Fabric Loader
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	// Fabric API
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	modApi "me.shedaniel.cloth:basic-math:0.6.1"
+	include "me.shedaniel.cloth:basic-math:0.6.1"
+	modImplementation "io.github.prospector:modmenu:${modmenu_version}"
 }
 
-bintray {
-    user = project.hasProperty('bintrayUser') ? project.property('bintrayUser') : System.getenv('BINTRAY_USER')
-    key = project.hasProperty('bintrayApiKey') ? project.property('bintrayApiKey') : System.getenv('BINTRAY_KEY')
-    publications = ["MyPublication"]
-    override = true
-    pkg {
-        repo = "cloth-config-2"
-        name = "config-2"
-        userOrg = "shedaniel"
-        licenses = ["Unlicense"]
-        version {
-            name = project.version
-            vcsTag = project.version
-            released = new Date()
-            desc = "Cloth Config API for Minecraft"
-            githubRepo = 'shedaniel/ClothConfig'
-            websiteUrl = 'https://github.com/shedaniel/ClothConfig'
-            issueTrackerUrl = 'https://github.com/shedaniel/ClothConfig/issues'
-            vcsUrl = 'https://github.com/shedaniel/ClothConfig.git'
-            gpg {
-                sign = true
-            }
-//            mavenCentralSync {
-//                sync = true //[Default: true] Determines whether to sync the version to Maven Central.
-//                user = project.hasProperty('ossToken') ? project.property('ossToken') : System.getenv('OSS_TOKEN')
-//                OSS user token: mandatory
-//                password = project.hasProperty('ossPass') ? project.property('ossPass') : System.getenv('OSS_PASS')
-            //OSS user password: mandatory
-//                close = '1'
-            //Optional property. By default the staging repository is closed and artifacts are released to Maven Central. You can optionally turn this behaviour off (by puting 0 as value) and release the version manually.
-//            }
-        }
-    }
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": project.version
+	}
 }
 
-// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-// if it is present.
-// If you remove this task, sources will not be generated.
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 8
 }
 
-task javadocs(type: Javadoc) {
-    source = sourceSets.main.allJava
+java {
+	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
+	// if it is present.
+	// If you remove this line, sources will not be generated.
+	withSourcesJar()
+
+	sourceCompatibility = JavaVersion.VERSION_1_8
+	targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-task javadocsJar(type: Jar, dependsOn: javadocs) {
-    classifier = "javadocs"
-    javadocs.failOnError false
-    from javadocs.destinationDir
+jar {
+	from("LICENSE") {
+		rename { "${it}_${project.base.archivesName.get()}"}
+	}
 }
 
+// configure the maven publication
 publishing {
-    publications {
-        MyPublication(MavenPublication) {
-            artifact(file("${project.buildDir}/libs/${project.archivesBaseName}-${project.version}.jar")) {
-                builtBy remapJar
-            }
-            artifact(sourcesJar) {
-                builtBy remapSourcesJar
-            }
-            artifact javadocsJar
-            groupId 'me.shedaniel.cloth'
-            artifactId 'config-2'
-            version = project.version
-        }
-    }
+	publications {
+		create("mavenJava", MavenPublication) {
+			artifactId = "config-2"
+			from components.java
+		}
+	}
 
-    // select the repositories you want to publish to
-    repositories {
-        // uncomment to publish to the local maven
-        // mavenLocal()
-    }
-}
-
-curseforge {
-    apiKey = project.hasProperty('apiKey') ? project.property('apiKey') : System.getenv('CF_API_KEY')
-    if (apiKey != null)
-        project {
-            id = '319057'
-            releaseType = 'beta'
-            addGameVersion '1.16-Snapshot'
-            addGameVersion 'Fabric'
-            addGameVersion 'Java 8'
-            relations {
-                requiredDependency 'fabric-api'
-            }
-            mainArtifact(file("${project.buildDir}/libs/${project.archivesBaseName}-${project.version}.jar")) {
-                displayName = "[Fabric 20w12a] ClothConfig2-$project.version"
-            }
-            addArtifact(file("${project.buildDir}/libs/${project.archivesBaseName}-${project.version}-sources.jar"))
-            afterEvaluate {
-                uploadTask.dependsOn("remapJar")
-                uploadTask.dependsOn("remapSourcesJar")
-            }
-        }
-    options {
-        forgeGradleIntegration = false
-        javaVersionAutoDetect = false
-    }
+	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
+	repositories {
+		// Add repositories to publish to here.
+		// Notice: This block does NOT have the same function as the block in the top level.
+		// The repositories here will be used for publishing your artifact, not for
+		// retrieving dependencies.
+	}
 }
